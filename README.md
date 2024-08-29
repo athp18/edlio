@@ -1,3 +1,6 @@
 To install:
 
-run 'pip install git+ps://github.com/athp18/edlio.git'
+run 
+```sh
+pip install git+https://github.com/athp18/edlio.git
+```
