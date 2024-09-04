@@ -20,9 +20,8 @@
 import random
 import string
 import re
-from .dataset import EDLDataset
 
-def dump_timestamps(dset: 'EDLDataset', output: str = 'timestamps.txt', as_float: bool = True) -> None:
+def dump_timestamps(dset, output='timestamps.txt', as_float=True):
     """
     Simple function to dump timestamps to a .txt file for easy analysis. Timestamps are converted to a float.
 
