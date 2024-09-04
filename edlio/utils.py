@@ -28,7 +28,7 @@ def dump_timestamps(dset, output='timestamps.txt', as_float=True):
     Args:
     dset: EDLDataset that contains Frame objects
     output (string): txt file to dump timestamps to
-    as_float (bool): 
+    as_float (bool): whether to save the timestamps at floats (default: string)
     """
     with open(output, 'w') as f:
         for frame in dset.read_data():
