@@ -72,7 +72,7 @@ def encode_video(input_path, output_filename="depth.avi", fps=30, pixel_format="
     
     return None
 
-def detect_edl_type(path):
+def _detect_edl_type(path):
     if not os.path.isdir(path):
         raise EDLError(f"The path '{path}' is not a directory.")
 
