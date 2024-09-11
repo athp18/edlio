@@ -88,13 +88,13 @@ def _detect_edl_type(path):
 
     edl_type = manifest.get('type')
     if edl_type == 'dataset':
-        return EDLDataset
+        return 'EDLDataset'
     elif edl_type == 'group':
-        return EDLGroup
+        return 'EDLGroup'
     elif edl_type == 'collection':
-        return EDLCollection
+        return 'EDLCollection'
     elif edl_type:  # Generic EDLUnit
-        return EDLUnit
+        return 'EDLUnit'
     else:
         raise EDLTypeError(f"Unknown or invalid EDL type in manifest: {edl_type}")
     
@@ -119,5 +119,23 @@ def dump_timestamps(dset, output='depth_ts.txt', as_float=True):
                     f.write(f'{numeric.group(1)}\n')
     print(f'Timestamps saved to {output}')
 
-if __name__ == '__main__':
-  pass
+def format(path=os.getcwd()):
+  type = _detect_edl_type(path)
+  if type == 'EDLCollection':
+    dcoll = edlio.load(path)
+    dset = dcoll.group_by_name('videos').dataset_by_name('orbbec-depth-sensor')
+    input_dir, input_filename = os.path.split(path)
+    input_name, input_ext = os.path.splitext(input_filename)
+    tstamps_path = os.path.join(input_dir, tstamps_path, 'depth_ts.txt')
+    
+    timestamps = dump_timestamps(dset, tstamps_path)
+  elif type == 'EDLDataset':
+    pass
+  elif type == 'EDLGroup':
+    pass
+  generate_metadata()
+  encode_video(path)
+    
+    
+    
+    
