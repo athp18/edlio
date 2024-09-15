@@ -14,67 +14,10 @@ import os
 import tomlkit
 from .unit import EDLError
 import re
-import subprocess
 
-def generate_metadata(file, subjectname, session_name, start_time, depth_resolution=[640,576], color_resolution=[640,576], little_endian=True):
+def generate_metadata():
   pass
   return metadata_dict
-
-def encode_video(input_path, output_filename="depth.avi", fps=30, pixel_format="gray16", codec="ffv1", threads=6, crf=10, slices=24, slicecrc=1):
-    input_dir, input_filename = os.path.split(input_path)
-    input_name, input_ext = os.path.splitext(input_filename)
-    output_path = os.path.join(input_dir, output_filename)
-  
-    probe_command = [
-        "ffprobe",
-        "-v", "error",
-        "-select_streams", "v:0",
-        "-count_packets",
-        "-show_entries", "stream=width,height",
-        "-of", "csv=p=0",
-        input_path
-    ]
-    
-    try:
-        probe_output = subprocess.check_output(probe_command, universal_newlines=True)
-        width, height = map(int, probe_output.strip().split(','))
-    except subprocess.CalledProcessError as e:
-        print(f"Error probing video: {e}")
-        return None
-
-    frame_size = f"{width}x{height}"
-    command = [
-        "ffmpeg",
-        "-i", input_path,
-        "-y",
-        "-loglevel", "fatal",
-        "-an",
-        "-crf", str(crf),
-        "-vcodec", codec,
-        "-preset", "ultrafast",
-        "-threads", str(threads),
-        "-slices", str(slices),
-        "-slicecrc", str(slicecrc),
-        "-r", str(fps),
-        "-pix_fmt", pixel_format,
-        "-s", frame_size,
-        output_path
-    ]
-
-    try:
-        subprocess.run(command, check=True, capture_output=True, text=True)
-        print(f"Video encoded successfully. Output saved as {output_path}")
-        return output_path
-    except subprocess.CalledProcessError as e:
-        print(f"Error occurred during video encoding. FFmpeg returned code {e.returncode}")
-        print("Error output:")
-        print(e.stderr)
-    except FileNotFoundError:
-        print("FFmpeg not found. Please ensure FFmpeg is installed and added to your system PATH.")
-    except Exception as e:
-        print(f"An unexpected error occurred: {str(e)}")
-    
-    return None
 
 def _detect_edl_type(path):
     if not os.path.isdir(path):
@@ -137,8 +80,6 @@ def format(path=os.getcwd()):
     pass
   elif type == 'EDLGroup':
     pass
-  generate_metadata()
-  encode_video(path)
     
     
     
