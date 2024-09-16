@@ -19,30 +19,7 @@
 
 import random
 import string
-import re
-
-def dump_timestamps(dset, output='depth_ts.txt', as_float=True):
-    """
-    Simple function to dump timestamps to a .txt file for easy analysis. Timestamps are converted to a float.
-
-    Args:
-    dset: EDLDataset that contains Frame objects
-    output (string): txt file to dump timestamps to
-    as_float (bool): whether to save the timestamps at floats (default: string)
-    """
-    with open(output, 'w') as f:
-        for frame in dset.read_data():
-            timestamp = str(frame.time)
-            numeric = re.search(r'(\d+\.\d+)', timestamp)
-            if numeric:
-                if as_float:
-                    float_timestamp = float(numeric.group(1))
-                    f.write(f'{float_timestamp}\n')
-                else:
-                    f.write(f'{numeric.group(1)}\n')
-    print(f'Timestamps saved to {output}')
-        
-                    
+import re           
 
 def sanitize_name(name: str) -> str:
     '''
