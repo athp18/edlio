@@ -7,7 +7,6 @@ Wrapper to automatically convert Syntalos EDL-style data to MoSeq data. MoSeq fi
 
 This function assumes that you have created a recording using Syntalos' Orbbec Femto Sensor module.
 """
-
 import os
 import json
 import shutil
@@ -15,7 +14,10 @@ import numpy as np
 import tomlkit
 from .dataio.tsyncfile import TSyncFile, LegacyTSyncFile
 
-
+class FileNotFoundError(Exception):
+    """Exception raised when a required file is not found."""
+    pass
+  
 def _detect_edl_type(path: str) -> str:
     """
     Helper function to detect EDL Type and ensure that an EDLCollection is being passed to reformat
@@ -27,13 +29,13 @@ def _detect_edl_type(path: str) -> str:
     """
     if not os.path.isdir(path):
         # ensure path is a directory and not a file
-        raise ValueError(f"The path '{path}' is not a directory.")
+        raise FileNotFoundError(f"The path '{path}' is not a directory.")
 
     manifest_path = os.path.join(
         path, "manifest.toml"
     )  # the manifest.toml contains info on the dataset
     if not os.path.isfile(manifest_path):
-        raise ValueError(f"No manifest.toml file found in '{path}'.")
+        raise FileNotFoundError(f"No manifest.toml file found in '{path}'.")
 
     try:
         with open(manifest_path, "r", encoding="utf-8") as f:
@@ -129,7 +131,7 @@ def format(path: str) -> None:
     # Find metadata
     metadata_path = os.path.join(path, "orbbec-femto-camera", "metadata.json")
     if not os.path.exists(metadata_path):
-        raise ValueError("There is no metadata file here")
+        raise FileNotFoundError("There is no metadata file here")
 
     # Find the video
     video_src_path = os.path.join(path, "videos", "orbbec-femto-camera")
@@ -140,7 +142,7 @@ def format(path: str) -> None:
             break
 
     if not videofile:
-        raise ValueError("No video file found (.avi, .mkv, .mp4)")
+        raise FileNotFoundError("No video file found (.avi, .mkv, .mp4)")
 
     for file in os.listdir(video_src_path):
         if file.endswith(".tsync"):  # convert to numpy array
@@ -148,7 +150,9 @@ def format(path: str) -> None:
             break
 
     if len(timestamps) == 0:
-        raise ValueError("No .tsync file found")
+        raise ValueError(
+          "There is an error with your tsync file, please check it out."
+        ) # raise Value Error if the tsync file is invalid
 
     # read metadata file and create directory
     with open(metadata_path, "r") as f:
