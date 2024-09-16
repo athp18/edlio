@@ -7,33 +7,31 @@ Wrapper to automatically convert Syntalos EDL-style data to MoSeq data. MoSeq fi
 
 Ideally the user can just do:
 > from edlio.format import format
-> format()
+> format(path)
 """
-
-import os
-import tomlkit
-from .unit import EDLError
-import re
-
-def generate_metadata():
-  pass
-  return metadata_dict
-
 def _detect_edl_type(path):
-    if not os.path.isdir(path):
-        raise EDLError(f"The path '{path}' is not a directory.")
+  """
+  Helper function to detect EDL Type and ensure that an EDLCollection is being passed to reformat
 
-    manifest_path = os.path.join(path, 'manifest.toml')
+  Args:
+  path (str): Path to the dataset
+
+  Returns a string informing the dataset type
+  """
+    if not os.path.isdir(path): # ensure path is a directory and not a file
+        raise ValueError(f"The path '{path}' is not a directory.")
+
+    manifest_path = os.path.join(path, 'manifest.toml') # the manifest.toml contains info on the dataset
     if not os.path.isfile(manifest_path):
-        raise EDLError(f"No manifest.toml file found in '{path}'.")
+        raise ValueError(f"No manifest.toml file found in '{path}'.")
 
     try:
         with open(manifest_path, 'r', encoding='utf-8') as f:
             manifest = tomlkit.load(f)
     except tomlkit.exceptions.TOMLKitError as e:
-        raise EDLError(f"Error parsing manifest.toml: {str(e)}")
+        raise ValueError(f"Error parsing manifest.toml: {str(e)}")
 
-    edl_type = manifest.get('type')
+    edl_type = manifest.get('type') # get the type
     if edl_type == 'dataset':
         return 'EDLDataset'
     elif edl_type == 'group':
@@ -43,44 +41,120 @@ def _detect_edl_type(path):
     elif edl_type:  # Generic EDLUnit
         return 'EDLUnit'
     else:
-        raise EDLTypeError(f"Unknown or invalid EDL type in manifest: {edl_type}")
-    
-def dump_timestamps(dset, output='depth_ts.txt', as_float=True):
+        raise ValueError(f"Unknown or invalid EDL type in manifest: {edl_type}")
+
+def tsync_to_np(tsync_path):
     """
-    Simple function to dump timestamps to a .txt file for easy analysis. Timestamps are converted to a float.
+    Read a .tsync fil, convert to milliseconds, and convert it to a numpy array
 
     Args:
-    dset: EDLDataset that contains Frame objects
-    output (string): txt file to dump timestamps to
-    as_float (bool): whether to save the timestamps at floats (default: string)
-    """
-    with open(output, 'w') as f:
-        for frame in dset.read_data():
-            timestamp = str(frame.time)
-            numeric = re.search(r'(\d+\.\d+)', timestamp)
-            if numeric:
-                if as_float:
-                    float_timestamp = float(numeric.group(1))
-                    f.write(f'{float_timestamp}\n')
-                else:
-                    f.write(f'{numeric.group(1)}\n')
-    print(f'Timestamps saved to {output}')
+    tsync_path (str): Path to the input .tsync file
 
-def format(path=os.getcwd()):
-  type = _detect_edl_type(path)
-  if type == 'EDLCollection':
-    dcoll = edlio.load(path)
-    dset = dcoll.group_by_name('videos').dataset_by_name('orbbec-depth-sensor')
-    input_dir, input_filename = os.path.split(path)
-    input_name, input_ext = os.path.splitext(input_filename)
-    tstamps_path = os.path.join(input_dir, tstamps_path, 'depth_ts.txt')
-    
-    timestamps = dump_timestamps(dset, tstamps_path)
-  elif type == 'EDLDataset':
-    pass
-  elif type == 'EDLGroup':
-    pass
-    
+    Returns:
+    timestamps (numpy.array): Numpy array containing all of the timestamps
+    """
+    # Determine if it's a legacy file or not
+    if LegacyTSyncFile.is_legacy(tsync_path):
+        tsync = LegacyTSyncFile(tsync_path)
+    else:
+        tsync = TSyncFile(tsync_path)
+
+    tstamps = []
+    for time_pair in tsync.times:
+        tstamps.append(float(time_pair[1] / 1000)) # append to list AND ensure its a float AND convert to milliseconds instead of microseconds
+    timestamps = np.array(tstamps) # convert to numpy array
+    if check_timestamp_error_percentage(timestamps) >= 0.05: # raise flag if more than 5% of frames are dropped
+        print("Warning: More than 5% of your video's frames are dropped.")
+    return timestamps
+
+def check_timestamp_error_percentage(timestamps, fps=30, scaling_factor=1000):
+    """
+    Return the proportion of dropped frames relative to the respective recorded timestamps and frames per second.
+    Args:
+    timestamps (numpy.array): Session's recorded timestamp array.
+    fps (int): Frames per second
+    scaling_factor (float): factor to divide timestamps by to convert timestamp milliseconds into seconds.
+    Returns:
+    percentError (float): Percentage of frames that were dropped/missed during acquisition.
+    """
+    # https://www.mathworks.com/help/imaq/examples/determining-the-rate-of-acquisition.html
+    # Find the time difference between frames.
+    diff = np.diff(timestamps)
+    # Check if the timestamps are in milliseconds based on the mean difference amount
+    if np.mean(diff) > 10:
+        # rescale the timestamps to seconds
+        diff /= scaling_factor
+    # Find the average time difference between frames.
+    avgTime = np.mean(diff)
+    # Determine the experimental frame rate.
+    expRate = 1 / avgTime
+    # Determine the percent error between the determined and actual frame rate.
+    diffRates = abs(fps - expRate)
+    percentError = (diffRates / fps)
+    return percentError
+
+def format(path):
+    """
+    Args:
+
+    path (str): Path to the dataset (must be an EDLCollection). Ensure that your folder has a manifest.toml file in it AND that the manifest file says its an EDLCollection
+
+    Returns:
+    None (this function will just create a directory)
+    """
+    assert _detect_edl_type(path) == 'EDLCollection', f"Error: Expected 'EDLCollection', but got '{_detect_edl_type(path)}'" # make sure we have an EDLCollection
+    files = os.listdir(path)
+
+    # Find metadata
+    metadata_path = os.path.join(path, 'orbbec-femto-camera', 'metadata.json')
+    if not os.path.exists(metadata_path):
+        raise ValueError("There is no metadata file here")
+
+    # Find the video
+    video_src_path = os.path.join(path, 'videos', 'orbbec-femto-camera')
+    videofile = None
+    for file in os.listdir(video_src_path):
+        if file.endswith('.avi') or file.endswith('.mkv') or file.endswith('.mp4'):
+            videofile = os.path.join(video_src_path, file)
+            break
+
+    if not videofile:
+        raise ValueError("No video file found (.avi, .mkv, .mp4)")
+
+    for file in os.listdir(video_src_path):
+        if file.endswith('.tsync'): # convert to numpy array
+            timestamps = tsync_to_np(os.path.join(video_src_path, file))
+            break
+
+    if len(timestamps) == 0:
+        raise ValueError("No .tsync file found")
+
+    # read metadata file and create directory
+    with open(metadata_path, 'r') as f:
+        data = json.load(f)
+        dataset_name = f"{data['SubjectName']}_{data['SessionName']}_{data['StartTime']}"
+
+    moseq_dir = os.path.join(path, dataset_name)
+    os.makedirs(moseq_dir, exist_ok=True)
+
+    # write the video to the directory
+    video_dst_path = os.path.join(moseq_dir, 'depth.avi')
+    shutil.copy(videofile, video_dst_path)
+
+    # write the metadata to the directory
+    metadata_dst_path = os.path.join(moseq_dir, 'metadata.json')
+    shutil.copy(metadata_path, metadata_dst_path)
+
+    # write timestamps
+    with open(os.path.join(moseq_dir, 'depth_ts.txt'), 'w') as f:
+        for timestamp in timestamps:
+            f.write(f"{float(timestamp)}\n")
+
+    print(f"MoSeq directory created at {moseq_dir}")
+    print(f"Video copied to {video_dst_path}")
+    print(f"Timestamps file copied to {os.path.join(moseq_dir, 'depth_ts.txt')}")
+    print(f"Metadata copied to {metadata_dst_path}")
+
     
     
     
