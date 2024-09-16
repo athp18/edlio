@@ -7,6 +7,7 @@ Wrapper to automatically convert Syntalos EDL-style data to MoSeq data. MoSeq fi
 
 This function assumes that you have created a recording using Syntalos' Orbbec Femto Sensor module.
 """
+
 import os
 import json
 import shutil
@@ -14,39 +15,44 @@ import numpy as np
 import tomlkit
 from edlio.dataio.tsyncfile import TSyncFile, LegacyTSyncFile
 
+
 def _detect_edl_type(path: str) -> str:
-  """
-  Helper function to detect EDL Type and ensure that an EDLCollection is being passed to reformat
+    """
+    Helper function to detect EDL Type and ensure that an EDLCollection is being passed to reformat
 
-  Args:
-  path (str): Path to the dataset
+    Args:
+    path (str): Path to the dataset
 
-  Returns a string informing the dataset type
-  """
-    if not os.path.isdir(path): # ensure path is a directory and not a file
+    Returns a string informing the dataset type
+    """
+    if not os.path.isdir(path):
+        # ensure path is a directory and not a file
         raise ValueError(f"The path '{path}' is not a directory.")
 
-    manifest_path = os.path.join(path, 'manifest.toml') # the manifest.toml contains info on the dataset
+    manifest_path = os.path.join(
+        path, "manifest.toml"
+    )  # the manifest.toml contains info on the dataset
     if not os.path.isfile(manifest_path):
         raise ValueError(f"No manifest.toml file found in '{path}'.")
 
     try:
-        with open(manifest_path, 'r', encoding='utf-8') as f:
+        with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = tomlkit.load(f)
     except tomlkit.exceptions.TOMLKitError as e:
         raise ValueError(f"Error parsing manifest.toml: {str(e)}")
 
-    edl_type = manifest.get('type') # get the type
-    if edl_type == 'dataset':
-        return 'EDLDataset'
-    elif edl_type == 'group':
-        return 'EDLGroup'
-    elif edl_type == 'collection':
-        return 'EDLCollection'
+    edl_type = manifest.get("type")  # get the type
+    if edl_type == "dataset":
+        return "EDLDataset"
+    elif edl_type == "group":
+        return "EDLGroup"
+    elif edl_type == "collection":
+        return "EDLCollection"
     elif edl_type:  # Generic EDLUnit
-        return 'EDLUnit'
+        return "EDLUnit"
     else:
         raise ValueError(f"Unknown or invalid EDL type in manifest: {edl_type}")
+
 
 def tsync_to_np(tsync_path: str) -> np.ndarray:
     """
@@ -66,13 +72,20 @@ def tsync_to_np(tsync_path: str) -> np.ndarray:
 
     tstamps = []
     for time_pair in tsync.times:
-        tstamps.append(float(time_pair[1] / 1000)) # append to list AND ensure its a float AND convert to milliseconds instead of microseconds
-    timestamps = np.array(tstamps) # convert to numpy array
-    if check_timestamp_error_percentage(timestamps) >= 0.05: # raise flag if more than 5% of frames are dropped
+        tstamps.append(
+            float(time_pair[1] / 1000)
+        )  # append to list AND ensure its a float AND convert to milliseconds instead of microseconds
+    timestamps = np.array(tstamps)  # convert to numpy array
+    if (
+        check_timestamp_error_percentage(timestamps) >= 0.05
+    ):  # raise flag if more than 5% of frames are dropped
         print("Warning: More than 5% of your video's frames are dropped.")
     return timestamps
 
-def check_timestamp_error_percentage(timestamps: np.ndarray, fps: int = 30, scaling_factor: float = 1000) -> float:
+
+def check_timestamp_error_percentage(
+    timestamps: np.ndarray, fps: int = 30, scaling_factor: float = 1000
+) -> float:
     """
     Return the proportion of dropped frames relative to the respective recorded timestamps and frames per second.
     Args:
@@ -95,8 +108,9 @@ def check_timestamp_error_percentage(timestamps: np.ndarray, fps: int = 30, scal
     expRate = 1 / avgTime
     # Determine the percent error between the determined and actual frame rate.
     diffRates = abs(fps - expRate)
-    percentError = (diffRates / fps)
+    percentError = diffRates / fps
     return percentError
+
 
 def format(path: str) -> None:
     """
@@ -107,19 +121,21 @@ def format(path: str) -> None:
     Returns:
     None (this function will just create a directory)
     """
-    assert _detect_edl_type(path) == 'EDLCollection', f"Error: Expected 'EDLCollection', but got '{_detect_edl_type(path)}'" # make sure we have an EDLCollection
+    assert (
+        _detect_edl_type(path) == "EDLCollection"
+    ), f"Error: Expected 'EDLCollection', but got '{_detect_edl_type(path)}'"  # make sure we have an EDLCollection
     files = os.listdir(path)
 
     # Find metadata
-    metadata_path = os.path.join(path, 'orbbec-femto-camera', 'metadata.json')
+    metadata_path = os.path.join(path, "orbbec-femto-camera", "metadata.json")
     if not os.path.exists(metadata_path):
         raise ValueError("There is no metadata file here")
 
     # Find the video
-    video_src_path = os.path.join(path, 'videos', 'orbbec-femto-camera')
+    video_src_path = os.path.join(path, "videos", "orbbec-femto-camera")
     videofile = None
     for file in os.listdir(video_src_path):
-        if file.endswith('.avi') or file.endswith('.mkv') or file.endswith('.mp4'):
+        if file.endswith(".avi") or file.endswith(".mkv") or file.endswith(".mp4"):
             videofile = os.path.join(video_src_path, file)
             break
 
@@ -127,7 +143,7 @@ def format(path: str) -> None:
         raise ValueError("No video file found (.avi, .mkv, .mp4)")
 
     for file in os.listdir(video_src_path):
-        if file.endswith('.tsync'): # convert to numpy array
+        if file.endswith(".tsync"):  # convert to numpy array
             timestamps = tsync_to_np(os.path.join(video_src_path, file))
             break
 
@@ -135,23 +151,25 @@ def format(path: str) -> None:
         raise ValueError("No .tsync file found")
 
     # read metadata file and create directory
-    with open(metadata_path, 'r') as f:
+    with open(metadata_path, "r") as f:
         data = json.load(f)
-        dataset_name = f"{data['SubjectName']}_{data['SessionName']}_{data['StartTime']}"
+        dataset_name = (
+            f"{data['SubjectName']}_{data['SessionName']}_{data['StartTime']}"
+        )
 
     moseq_dir = os.path.join(path, dataset_name)
     os.makedirs(moseq_dir, exist_ok=True)
 
     # write the video to the directory
-    video_dst_path = os.path.join(moseq_dir, 'depth.avi')
+    video_dst_path = os.path.join(moseq_dir, "depth.avi")
     shutil.copy(videofile, video_dst_path)
 
     # write the metadata to the directory
-    metadata_dst_path = os.path.join(moseq_dir, 'metadata.json')
+    metadata_dst_path = os.path.join(moseq_dir, "metadata.json")
     shutil.copy(metadata_path, metadata_dst_path)
 
     # write timestamps
-    with open(os.path.join(moseq_dir, 'depth_ts.txt'), 'w') as f:
+    with open(os.path.join(moseq_dir, "depth_ts.txt"), "w") as f:
         for timestamp in timestamps:
             f.write(f"{float(timestamp)}\n")
 
@@ -159,7 +177,3 @@ def format(path: str) -> None:
     print(f"Video copied to {video_dst_path}")
     print(f"Timestamps file copied to {os.path.join(moseq_dir, 'depth_ts.txt')}")
     print(f"Metadata copied to {metadata_dst_path}")
-
-    
-    
-    
