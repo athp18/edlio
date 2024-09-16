@@ -1,7 +1,20 @@
 """
-Wrapper to automatically convert Syntalos EDL-style data to MoSeq data. MoSeq file structure:
+Wrapper to automatically convert Syntalos EDL-style data to MoSeq data. MoSeq file structure looks like this:
+- base_dir (session specific)
+  - depth.avi (depth recording)
+  - depth_ts.txt (depth timestamps)
+  - metadata.json (session metadata)
+
+This function assumes that you have created a recording using Syntalos' Orbbec Femto Sensor module.
 """
-def _detect_edl_type(path):
+import os
+import json
+import shutil
+import numpy as np
+import tomlkit
+from edlio.dataio.tsyncfile import TSyncFile, LegacyTSyncFile
+
+def _detect_edl_type(path: str) -> str:
   """
   Helper function to detect EDL Type and ensure that an EDLCollection is being passed to reformat
 
@@ -35,9 +48,9 @@ def _detect_edl_type(path):
     else:
         raise ValueError(f"Unknown or invalid EDL type in manifest: {edl_type}")
 
-def tsync_to_np(tsync_path):
+def tsync_to_np(tsync_path: str) -> np.ndarray:
     """
-    Read a .tsync fil, convert to milliseconds, and convert it to a numpy array
+    Read a .tsync file, convert to milliseconds, and convert it to a numpy array
 
     Args:
     tsync_path (str): Path to the input .tsync file
@@ -59,7 +72,7 @@ def tsync_to_np(tsync_path):
         print("Warning: More than 5% of your video's frames are dropped.")
     return timestamps
 
-def check_timestamp_error_percentage(timestamps, fps=30, scaling_factor=1000):
+def check_timestamp_error_percentage(timestamps: np.ndarray, fps: int = 30, scaling_factor: float = 1000) -> float:
     """
     Return the proportion of dropped frames relative to the respective recorded timestamps and frames per second.
     Args:
@@ -85,7 +98,7 @@ def check_timestamp_error_percentage(timestamps, fps=30, scaling_factor=1000):
     percentError = (diffRates / fps)
     return percentError
 
-def format(path):
+def format(path: str) -> None:
     """
     Args:
 
