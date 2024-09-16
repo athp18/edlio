@@ -14,3 +14,10 @@ To install, run:
 ```sh
 pip install git+https://github.com/athp18/edlio.git
 ```
+Or to install from source:
+```sh
+git clone https://github.com/athp18/edlio.git
+cd edlio
+pip install -r requirements.txt
+pip install -e .
+```
