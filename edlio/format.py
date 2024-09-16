@@ -13,7 +13,7 @@ import json
 import shutil
 import numpy as np
 import tomlkit
-from edlio.dataio.tsyncfile import TSyncFile, LegacyTSyncFile
+from .dataio.tsyncfile import TSyncFile, LegacyTSyncFile
 
 
 def _detect_edl_type(path: str) -> str:
