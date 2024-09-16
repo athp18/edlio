@@ -1,13 +1,5 @@
 """
 Wrapper to automatically convert Syntalos EDL-style data to MoSeq data. MoSeq file structure:
-- base_dir
-  - depth.avi (depth vid)
-  - depth_ts.txt (timestamps file)
-  - metadata.json (metadata file)
-
-Ideally the user can just do:
-> from edlio.format import format
-> format(path)
 """
 def _detect_edl_type(path):
   """
