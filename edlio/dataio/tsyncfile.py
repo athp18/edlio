@@ -26,6 +26,8 @@ from uuid import UUID
 from datetime import datetime
 
 import numpy as np
+import mmap
+import struct
 from xxhash import xxh3_64
 
 from .. import ureg
@@ -140,6 +142,31 @@ class TSyncFile:
         self._times = np.empty((0, 2))
         if fname:
             self.open(fname)
+
+    """
+    def _read_data(self, f: BinaryIO):
+        f.seek(0, 2)
+        file_size = f.tell()
+        f.seek(self._data_start_pos)  # assume this gets set after reading the header
+
+        # find number of entries
+        bytes_per_entry = struct.calcsize(self._time_format)
+        num_entries = (file_size - self._data_start_pos) // bytes_per_entry
+
+        # use a np mmap to avoid painfully slow loading
+        if file_size > 1e8:  # try at 100 mb (obv dont hardcode, thats why this is in comments)
+            with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                data = mm[self._data_start_pos:]
+                self._times = np.frombuffer(data, dtype=self._time_dtype, count=num_entries)
+        else:
+            # read data
+            data = f.read()
+            self._times = np.frombuffer(data, dtype=self._time_dtype, count=num_entries)
+
+        # lets make sure its a 2D array
+        if self._times.ndim == 1:
+            self._times = self._times.reshape(-1, 2)
+    """
 
     @property
     def time_created(self):
