@@ -21,3 +21,11 @@ cd edlio
 pip install -r requirements.txt
 pip install -e .
 ```
+
+To re-format a Syntalos dataset to a MoSeq dataset, try something like this:
+```python
+from edlio.format import format
+
+dataset = '/path/to/some/EDLCollection/dataset' # make sure the dataset is an EDLCollection dataset and has a manifest.toml file
+format(dataset)
+```
