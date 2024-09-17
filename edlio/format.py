@@ -13,10 +13,6 @@ import shutil
 import numpy as np
 import tomlkit
 from .dataio.tsyncfile import TSyncFile, LegacyTSyncFile
-
-class FileNotFoundError(Exception):
-    """Exception raised when a required file is not found."""
-    pass
   
 def _detect_edl_type(path: str) -> str:
     """
@@ -142,7 +138,7 @@ def format(path: str) -> None:
             break
 
     if not videofile:
-        raise FileNotFoundError("No video file found (.avi, .mkv, .mp4)")
+        raise ValueError("No video file found (.avi, .mkv, .mp4)")
 
     for file in os.listdir(video_src_path):
         if file.endswith(".tsync"):  # convert to numpy array
