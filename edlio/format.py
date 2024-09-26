@@ -8,7 +8,7 @@ from .dataio.tsyncfile import TSyncFile, LegacyTSyncFile
 
 def _detect_edl_type(path: str) -> str:
     """
-    Detects the type of Experimental Data Layer (EDL) unit based on the contents of the manifest.toml file.
+    Detects the type of EDL unit based on the contents of the manifest.toml file.
 
     Args:
     path (str): Path to the dataset
@@ -112,7 +112,7 @@ def format(path: str) -> None:
         _detect_edl_type(path) == "EDLCollection"
     ), f"Error: Expected 'EDLCollection', but got '{_detect_edl_type(path)}'"
 
-    # Find metadata
+    # extract metadata
     metadata_path = os.path.join(path, "orbbec-femto-camera", "metadata.json")
     if not os.path.exists(metadata_path):
         raise FileNotFoundError("There is no metadata file here")
